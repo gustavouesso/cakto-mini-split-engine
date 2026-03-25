@@ -13,9 +13,26 @@ from payments.services.split_calculator import SplitCalculator
 
 class PaymentCreateView(APIView):
     @staticmethod
+    def normalize_for_hash(obj):
+        from decimal import Decimal
+
+        if isinstance(obj, Decimal):
+            return str(obj)
+
+        if isinstance(obj, dict):
+            return {k: PaymentCreateView.normalize_for_hash(v) for k, v in obj.items()}
+
+        if isinstance(obj, list):
+            return [PaymentCreateView.normalize_for_hash(v) for v in obj]
+
+        return obj
+
+
+    @staticmethod
     def build_payload_hash(payload: dict) -> str:
-        normalized_payload = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(normalized_payload.encode("utf-8")).hexdigest()
+        normalized_payload = PaymentCreateView.normalize_for_hash(payload)
+        serialized = json.dumps(normalized_payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     @staticmethod
     def build_response(payment: Payment) -> dict:
